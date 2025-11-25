@@ -1,8 +1,23 @@
 #!/bin/bash
 
 echo "===== New Employee Workstation Setup ====="
+# ======================================
+# 1/ Update & Instll required packages
+# ======================================
 
-# =======================
+echo "[INFO] Updating the system..."
+sudo apt update && sudo apt upgrade -y
+echo "[INFO] Installing required packages..."
+sudo apt install -y netplan.io net-tools curl wget
+
+# ===========================
+# 2/ Create company groups
+# ==========================
+
+sudo groupadd employee 2>/dev/null
+sudo groupadd developer 2>/dev/null
+sudo groupadd accountant 2>/dev/null
+
 # 1/ Create Linux User
 # =======================
 read -p "Enter the new Linux username: " USER_NAME
@@ -45,3 +60,27 @@ esac
 
 
 echo "User $USER_NAME assigned role: $ROLE"
+
+# =====================================
+# 3/ Configure static IP via Netplan
+# =====================================
+read -p "Enter the network interface name (e.g., enp0s8): " NET_IF
+read -p "Enter static IP with CIDR (e.g.,192.168.56.101/24): " IP_ADDR
+read -p "Enter DNS (e.g., 8.8.8.8): " DNS
+
+NETPLAN_FILE="/etc/netplan/01-$USER_NAME.yaml"
+
+sudo tee $NETPLAN_FILE > /dev/null <<EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    $NET_IF:
+      dhcp4: no
+      addresses: [$IP_ADDR]
+      nameservers:
+        addresses: [$DNS]
+EOF
+
+sudo netplan apply
+echo "Static IP applied on $NET_IF: $IP_ADDR"
